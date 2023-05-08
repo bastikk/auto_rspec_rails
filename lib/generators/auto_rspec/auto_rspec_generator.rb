@@ -18,7 +18,7 @@ class AutoRspecGenerator < Rails::Generators::NamedBase
     Dir.mkdir(generator_dir_path) unless File.exist?(generator_dir_path)
 
     #parsing file
-    @relations = parse_relations('app/'+file_name+'.rb')
+    @relations = parse_relations('app/models/'+file_name+'.rb')
 
     #add check
     template "model.erb", generator_path
