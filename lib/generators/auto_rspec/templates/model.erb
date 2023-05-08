@@ -1,0 +1,19 @@
+# frozen_string_literal: true
+
+RSpec.describe <%= class_name %>, type: :model do
+<% if @relations.present? %>  describe 'relations' do
+  <% for belongs_to_relations in @relations[:belongs_to] -%>
+  it { is_expected.to belong_to(:<%= belongs_to_relations %>) }
+  <% end -%>
+  <%- for belongs_to_relations in @relations[:has_one] -%>
+  it { is_expected.to have_one(:<%= belongs_to_relations %>) }
+  <% end -%>
+  <%- for belongs_to_relations in @relations[:has_many] -%>
+  it { is_expected.to have_many(:<%= belongs_to_relations %>) }
+  <% end -%>
+  <%- for belongs_to_relations in @relations[:has_and_belongs_to_many] -%>
+  it { is_expected.to have_and_belong_to_many(:<%= belongs_to_relations %>) }
+  <% end -%>
+end
+<% end -%>
+end
