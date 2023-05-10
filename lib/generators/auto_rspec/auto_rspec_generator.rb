@@ -1,47 +1,70 @@
-module ModelParser
-  #   read about services
+require 'pry'
+module ActiveRecordParser
+  def parse_active_record(the_class)
+    associations = the_class.reflect_on_all_associations
 
-  def parse_relations(file_path)
-    file = File.open(file_path, "r")
-    content = file.read
-    file.close
-    # binding.pry
-    # content.scan(/^ *(belongs_to.*|has_one.*)\r/).uniq
+    # todo add it to erb
+    # todo add additional params tests
+    active_record_matchers = {}
+    active_record_matchers[:relations] = parse_relations(associations)
+    active_record_matchers[:nested_attributes] = the_class.nested_attributes_options
+    active_record_matchers[:enums] = the_class.defined_enums
+    active_record_matchers[:db_columns] = the_class.columns.map(&:name)
+    active_record_matchers[:db_indexes] = the_class.connection.indexes(the_class.table_name).map(&:columns)
+    active_record_matchers[:implicit_order_columns] = the_class.implicit_order_column
+    # have one/many attached
+    active_record_matchers[:readonly_attributes] = the_class.readonly_attributes
+    # todo read more about it
+    # active_record_matchers[:rich_texts] = the_class.rich_text_attribute_names
+    active_record_matchers[:serialized_attributes] = parse_serialized_attributes(the_class)
+    active_record_matchers[:unique_attributes] = the_class.validators.select do |validator|
+      validator.is_a?(ActiveRecord::Validations::UniquenessValidator)
+    end.map(&:attributes).flatten
 
-    # add another checks
-    # add parameters check
-    {
-      belongs_to: parse_belongs_to(content),
-      has_many: parse_has_many(content),
-      has_one: parse_has_one(content),
-      has_and_belongs_to_many: parse_has_and_belongs_to_many(content)
-    }
+    active_record_matchers
   end
 
   private
 
-  def parse_belongs_to(content)
-    content.scan(/belongs_to\s:(\w+)/).flatten
+  def parse_relations(associations)
+    relations = {
+      belongs_to: [],
+      has_many: [],
+      has_one: [],
+      has_and_belongs_to_many: []
+    }
+    associations.each do |association|
+      case association.macro
+      when :belongs_to
+        relations[:belongs_to] << association.name
+      when :has_many
+        relations[:has_many] << association.name
+      when :has_one
+        relations[:has_one] << association.name
+      when :has_and_belongs_to_many
+        relations[:has_and_belongs_to_many] << association.name
+      end
+    end
+
+    return nil if relations.values.all?(&:empty?)
+    relations
   end
 
-  def parse_has_many(content)
-    content.scan(/has_many\s:(\w+)/).flatten
-  end
+  def parse_serialized_attributes(the_class)
+    serialized_attributes = []
 
-  def parse_has_one(content)
-    content.scan(/has_one\s:(\w+)/).flatten
-  end
+    the_class.attribute_names.each do |attribute_name|
+      column = the_class.column_for_attribute(attribute_name)
+      serialized_attributes << attribute_name if column&.type == :text && column&.cast_type&.is_a?(ActiveRecord::Type::Serialized)
+    end
 
-  def parse_has_and_belongs_to_many(content)
-    content.scan(/has_and_belongs_to_many\s:(\w+)/).flatten
+    serialized_attributes
   end
 end
 
 class AutoRspecGenerator < Rails::Generators::NamedBase
-  # todo temporary
-  require 'pry'
   source_root File.expand_path('../templates', __FILE__)
-  include ModelParser
+  include ActiveRecordParser
 
   def create_service_file
     # error message if not appropriate path provided
@@ -60,10 +83,9 @@ class AutoRspecGenerator < Rails::Generators::NamedBase
     end
     the_class = Module.const_get(@class_name) unless @class_name.blank?
 
-    if the_class < ApplicationRecord
+    if the_class < ActiveRecord::Base
       create_spec_directory(directories)
-      @relations = parse_relations(file_path)
-      #  todo add
+      @active_record_matchers = parse_active_record(the_class)
       template "application_record.erb", spec_path
     elsif the_class < ActiveModel
       create_spec_directory(directories)
