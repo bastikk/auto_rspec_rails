@@ -1,12 +1,11 @@
 require 'pry'
 module ActiveRecordParser
   def parse_active_record(the_class)
-    associations = the_class.reflect_on_all_associations
-
     # todo add it to erb
     # todo add additional params tests
     active_record_matchers = {}
-    active_record_matchers[:relations] = parse_relations(associations)
+    active_record_matchers[:relations] = parse_relations(the_class.reflect_on_all_associations)
+    # binding.pry
     active_record_matchers[:nested_attributes] = the_class.nested_attributes_options
     active_record_matchers[:enums] = the_class.defined_enums
     active_record_matchers[:db_columns] = the_class.columns.map(&:name)

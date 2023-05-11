@@ -5,18 +5,45 @@ require 'rails_helper'
 
 RSpec.describe <%= @class_name %>, type: :model do
 <% if @active_record_matchers[:relations].present? %>  describe 'relations' do
-  <% for belongs_to_relations in @active_record_matchers[:relations][:belongs_to] -%>
+  <% @active_record_matchers[:relations][:belongs_to].each do |belongs_to_relations| -%>
   it { is_expected.to belong_to(:<%= belongs_to_relations %>) }
   <% end -%>
-  <%- for belongs_to_relations in @active_record_matchers[:relations][:has_one] -%>
-  it { is_expected.to have_one(:<%= belongs_to_relations %>) }
+  <%- @active_record_matchers[:relations][:has_one].each do |has_one_relations| -%>
+  it { is_expected.to have_one(:<%= has_one_relations %>) }
   <% end -%>
-  <%- for belongs_to_relations in @active_record_matchers[:relations][:has_many] -%>
-  it { is_expected.to have_many(:<%= belongs_to_relations %>) }
+  <%- @active_record_matchers[:relations][:has_many].each do |has_many_relations| -%>
+  it { is_expected.to have_many(:<%= has_many_relations %>) }
   <% end -%>
-  <%- for belongs_to_relations in @active_record_matchers[:relations][:has_and_belongs_to_many] -%>
-  it { is_expected.to have_and_belong_to_many(:<%= belongs_to_relations %>) }
+  <%- @active_record_matchers[:relations][:has_and_belongs_to_many].each do |has_and_belongs_to_many_relations| -%>
+  it { is_expected.to have_and_belong_to_many(:<%= has_and_belongs_to_many_relations %>) }
   <% end -%>
 end
+<% end -%>
+<% if @active_record_matchers[:nested_attributes].present? %>
+  <%- @active_record_matchers[:nested_attributes].each do |nested_attribute, nested_attribute_details| -%>
+  it do
+    is_expected.to accept_nested_attributes_for(:<%= nested_attribute %>)
+    <%- if nested_attribute_details[:allow_destroy] -%>
+      '.backed_by_column_of_type(:string)' if enum_details.values.any? { _1.is_a?(String) }
+    <%- end -%>
+    <%- if nested_attribute_details[:update_only] -%>
+      '.update_only(true)'
+    <%- end -%>
+    <%- if nested_attribute_details[:limit] -%>
+      '.allow_destroy(true)'
+    <%- end -%>
+  end
+  <%- end -%>
+<% end -%>
+<% if @active_record_matchers[:enums].present? %>
+  <%- @active_record_matchers[:enums].each do |enum, enum_details| -%>
+  it do
+    is_expected.to define_enum_for(:<%= enum %>)
+      .with_values(<%= enum_details %>)
+      <%- if enum_details.values.any? { _1.is_a?(String) } -%>
+      '.backed_by_column_of_type(:string)' if enum_details.values.any? { _1.is_a?(String) }
+      <%- end -%>
+  end
+  <%- end -%>
 <% end -%>
 end
