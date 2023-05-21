@@ -1,4 +1,4 @@
-module ModelParser
+module ActiveModelParser
   # todo how to use it???????
   #   read about services
 

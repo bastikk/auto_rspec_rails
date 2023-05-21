@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.0].define(version: 2023_05_10_125152) do
+ActiveRecord::Schema[7.0].define(version: 2023_05_12_231151) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.string "name", null: false
     t.text "body"
@@ -24,8 +24,8 @@ ActiveRecord::Schema[7.0].define(version: 2023_05_10_125152) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.string "name", null: false
     t.string "record_type", null: false
-    t.integer "record_id", null: false
-    t.integer "blob_id", null: false
+    t.bigint "record_id", null: false
+    t.bigint "blob_id", null: false
     t.datetime "created_at", null: false
     t.index ["blob_id"], name: "index_active_storage_attachments_on_blob_id"
     t.index ["record_type", "record_id", "name", "blob_id"], name: "index_active_storage_attachments_uniqueness", unique: true
@@ -44,7 +44,7 @@ ActiveRecord::Schema[7.0].define(version: 2023_05_10_125152) do
   end
 
   create_table "active_storage_variant_records", force: :cascade do |t|
-    t.integer "blob_id", null: false
+    t.bigint "blob_id", null: false
     t.string "variation_digest", null: false
     t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
   end
@@ -94,7 +94,10 @@ ActiveRecord::Schema[7.0].define(version: 2023_05_10_125152) do
     t.integer "a_id"
     t.integer "b_id"
     t.string "some"
-    t.index ["a_id"], name: "index_test_models_on_a_id"
+    t.integer "status"
+    t.string "status2"
+    t.string "readonly_text"
+    t.index ["a_id"], name: "index_test_models_on_a_id", unique: true
     t.index ["as_id"], name: "index_test_models_on_as_id"
     t.index ["b_id"], name: "index_test_models_on_b_id"
     t.index ["bs_id"], name: "index_test_models_on_bs_id"

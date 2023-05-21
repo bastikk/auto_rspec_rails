@@ -5,20 +5,19 @@ module ActiveRecordParser
     # todo add additional params tests
     active_record_matchers = {}
     active_record_matchers[:relations] = parse_relations(the_class.reflect_on_all_associations)
-    # binding.pry
     active_record_matchers[:nested_attributes] = the_class.nested_attributes_options
     active_record_matchers[:enums] = the_class.defined_enums
-    active_record_matchers[:db_columns] = the_class.columns.map(&:name)
-    active_record_matchers[:db_indexes] = the_class.connection.indexes(the_class.table_name).map(&:columns)
-    active_record_matchers[:implicit_order_columns] = the_class.implicit_order_column
-    # have one/many attached
+    active_record_matchers[:db_columns] = the_class.columns.map(&:name).drop(3)
+    active_record_matchers[:db_indexes] = parse_db_indexes(the_class)
+    active_record_matchers[:implicit_order_columns] = [the_class.implicit_order_column].flatten
     active_record_matchers[:readonly_attributes] = the_class.readonly_attributes
     # todo read more about it
+    # have one/many attached
     # active_record_matchers[:rich_texts] = the_class.rich_text_attribute_names
-    active_record_matchers[:serialized_attributes] = parse_serialized_attributes(the_class)
-    active_record_matchers[:unique_attributes] = the_class.validators.select do |validator|
-      validator.is_a?(ActiveRecord::Validations::UniquenessValidator)
-    end.map(&:attributes).flatten
+    # active_record_matchers[:serialized_attributes] = parse_serialized_attributes(the_class)
+    # active_record_matchers[:unique_attributes] = the_class.validators.select do |validator|
+    #   validator.is_a?(ActiveRecord::Validations::UniquenessValidator)
+    # end.map(&:attributes).flatten
 
     active_record_matchers
   end
@@ -59,6 +58,16 @@ module ActiveRecordParser
 
     serialized_attributes
   end
+
+  def parse_db_indexes(the_class)
+    db_indexes = {}
+    the_class.connection.indexes(the_class.table_name).map { { _1.unique => _1.columns.first } }.each do |index|
+      key = index.keys.first
+      next db_indexes[key] << index[key] if db_indexes[key]
+      db_indexes[key] = [index[key]]
+    end
+    db_indexes
+  end
 end
 
 class AutoRspecGenerator < Rails::Generators::NamedBase
@@ -88,8 +97,12 @@ class AutoRspecGenerator < Rails::Generators::NamedBase
       template "application_record.erb", spec_path
     elsif the_class < ActiveModel
       create_spec_directory(directories)
-      p 'not implemented yet'
-      #   todo add
+      @active_model_matchers = parse_active_model(the_class)
+      template "active_model.erb", spec_path
+    elsif the_class < ApplicationController
+      create_spec_directory(directories)
+      @application_controller_matchers = parse_application_controller(the_class)
+      template "application_controller.erb", spec_path
     else
       puts "Spec generation for provided file doesn't supported. Please use it only for ApplicationRecord/ActiveModel classes"
       return

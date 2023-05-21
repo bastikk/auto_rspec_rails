@@ -41,9 +41,37 @@ end
     is_expected.to define_enum_for(:<%= enum %>)
       .with_values(<%= enum_details %>)
       <%- if enum_details.values.any? { _1.is_a?(String) } -%>
-      '.backed_by_column_of_type(:string)' if enum_details.values.any? { _1.is_a?(String) }
+      .backed_by_column_of_type(:string)
       <%- end -%>
   end
+  <%- end -%>
+<% end -%>
+<% if @active_record_matchers[:db_columns].present? %>
+  <%- @active_record_matchers[:db_columns].each do |db_column| -%>
+    it { is_expected.to have_db_column(:<%= db_column %>) }
+  <%- end -%>
+<% end -%>
+<% if @active_record_matchers[:db_indexes].present? %>
+  <%- @active_record_matchers[:db_indexes].each do |key, db_indexes|  -%>
+    <%- unless key -%>
+      <%- db_indexes.each do |db_index| -%>
+    it { is_expected.to have_db_index(:<%= db_index %>) }
+      <%- end -%>
+    <%- else -%>
+      <%- db_indexes.each do |db_index| -%>
+    it { is_expected.to have_db_index(:<%= db_index %>).unique }
+      <%- end -%>
+    <%- end -%>
+  <%- end -%>
+<% end -%>
+<% if @active_record_matchers[:implicit_order_columns].present? %>
+  <%- @active_record_matchers[:implicit_order_columns].each do |implicit_order_column| -%>
+    it { is_expected.to have_implicit_order_column(:<%= implicit_order_column %>) }
+  <%- end -%>
+<% end -%>
+<% if @active_record_matchers[:readonly_attributes].present? %>
+  <%- @active_record_matchers[:readonly_attributes].each do |readonly_attribute| -%>
+    it { is_expected.to have_readonly_attribute(:<%= readonly_attribute %>) }
   <%- end -%>
 <% end -%>
 end
