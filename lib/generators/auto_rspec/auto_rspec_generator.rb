@@ -1,8 +1,6 @@
 require 'pry'
 module ActiveRecordParser
   def parse_active_record(the_class)
-    # todo add it to erb
-    # todo add additional params tests
     active_record_matchers = {}
     active_record_matchers[:relations] = parse_relations(the_class.reflect_on_all_associations)
     active_record_matchers[:nested_attributes] = the_class.nested_attributes_options
@@ -11,13 +9,6 @@ module ActiveRecordParser
     active_record_matchers[:db_indexes] = parse_db_indexes(the_class)
     active_record_matchers[:implicit_order_columns] = [the_class.implicit_order_column].flatten
     active_record_matchers[:readonly_attributes] = the_class.readonly_attributes
-    # todo read more about it
-    # have one/many attached
-    # active_record_matchers[:rich_texts] = the_class.rich_text_attribute_names
-    # active_record_matchers[:serialized_attributes] = parse_serialized_attributes(the_class)
-    # active_record_matchers[:unique_attributes] = the_class.validators.select do |validator|
-    #   validator.is_a?(ActiveRecord::Validations::UniquenessValidator)
-    # end.map(&:attributes).flatten
 
     active_record_matchers
   end
@@ -74,12 +65,9 @@ class AutoRspecGenerator < Rails::Generators::NamedBase
   source_root File.expand_path('../templates', __FILE__)
   include ActiveRecordParser
 
-  def create_service_file
+  def create_spec_file
     # error message if not appropriate path provided
-    unless File.exist?(file_path)
-      puts "#{file_path} doesn't exist!"
-      return
-    end
+    return puts "#{file_path} doesn't exist!" unless File.exist?(file_path)
 
     directories = File.dirname(file_path).split('/').drop(1)
     spec_path = 'spec/' + directories.join('/') + "/#{File.basename(file_name, '.*')}_spec.rb"
@@ -105,7 +93,6 @@ class AutoRspecGenerator < Rails::Generators::NamedBase
       template "application_controller.erb", spec_path
     else
       puts "Spec generation for provided file doesn't supported. Please use it only for ApplicationRecord/ActiveModel classes"
-      return
     end
   end
 

@@ -1,6 +1,5 @@
 # frozen_string_literal: true
-# todo remove it
-# make include somewhere else and add it to description
+
 require 'rails_helper'
 
 RSpec.describe TestModel, type: :model do
