@@ -1,0 +1,14 @@
+# frozen_string_literal: true
+
+require 'rails_helper'
+
+RSpec.describe <%= @class_name %>, type: :model do
+<% if @active_model_matchers[:validators].present? %>  describe 'callbacks' do
+  <%- if @active_model_matchers[:validators][:presence].present? -%>
+    <%- @active_model_matchers[:validators][:presence].each do |validator_attribute| -%>
+    it { is_expected.to validate_presence_of(:<%= validator_attribute %>) }
+    <%- end -%>
+  <% end -%>
+<% end -%>
+end
+end

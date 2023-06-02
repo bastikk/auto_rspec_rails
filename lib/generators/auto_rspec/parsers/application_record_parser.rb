@@ -1,225 +1,63 @@
-# frozen_string_literal: true
+module ApplicationRecordParser
+  def parse_active_record(the_class)
+    active_record_matchers = {}
+    active_record_matchers[:relations] = parse_relations(the_class.reflect_on_all_associations)
+    active_record_matchers[:nested_attributes] = the_class.nested_attributes_options
+    active_record_matchers[:enums] = the_class.defined_enums
+    active_record_matchers[:db_columns] = the_class.columns.map(&:name).drop(3)
+    active_record_matchers[:db_indexes] = parse_db_indexes(the_class)
+    active_record_matchers[:implicit_order_columns] = [the_class.implicit_order_column].flatten
+    active_record_matchers[:readonly_attributes] = the_class.readonly_attributes
 
-RSpec.describe Services::SocialHistory::UpdatePatientEmrCategory do
-  subject { described_class.call(category, params) }
-
-  let(:freetext_detail_definition) { build(:millennium_sh_definition_detail) }
-  let(:numeric_detail_definition) { build(:millennium_sh_definition_detail, :numeric) }
-  let(:alpha_detail_definition) do
-    build(:millennium_sh_definition_detail, :alpha, allow_other_text: true, multi_select_ind: true)
-  end
-  let(:alpha_responses) { alpha_detail_definition[:alpha_response] }
-  let(:fuzzyage_detail_definition) { build(:millennium_sh_definition_detail, :fuzzyage) }
-  let(:category_definition) do
-    build(
-      :millennium_sh_definition,
-      detail_elements: [
-        freetext_detail_definition,
-        numeric_detail_definition,
-        alpha_detail_definition,
-        fuzzyage_detail_definition
-      ]
-    )
-  end
-  let(:sh_definition) { build(:sh_definition, definition: [category_definition]) }
-  let(:category) { create(:patient_emr_sh_category, sh_definition: sh_definition) }
-  let(:answer) do
-    create(
-      :patient_emr_sh_detail,
-      :with_freetext,
-      patient_emr_sh_category: category,
-      sh_definition: sh_definition,
-      category_definition: category_definition,
-      detail_definition: freetext_detail_definition
-    )
-  end
-  let(:new_comments) { 'new comments' }
-  let(:new_free_text) { 'new free text' }
-  let(:answer_params) { [] }
-  let(:params) { { status: status, comments: new_comments, answers: answer_params } }
-
-  context 'when status nil' do
-    let(:status) { nil }
-
-    it 'returns error' do
-      expect(subject).to be_failure
-      expect(subject.errors).to eq(['Not valid params'])
-      expect(category.patient_emr_update.errors[:action]).to eq(["can't be blank"])
-    end
+    active_record_matchers
   end
 
-  context 'when status UPDATE' do
-    let(:status) { 'UPDATE' }
+  private
 
-    context 'when emr has no updated before' do
-      it 'creates patient_emr_update record' do
-        expect { subject }.to change { category.patient_emr_update }.from(nil).to(PatientEmrShCategoryUpdate)
-      end
-
-      it 'saves changes to patient_emr_update and keeps emr record as it was' do
-        expect { subject }.not_to(change { category.reload.comments })
-        expect(category.patient_emr_update.comments).to eq(new_comments)
-      end
-
-      context 'when category has answers' do
-        before { category.answers << answer }
-
-        context 'when params has no answer params' do
-          before { params.delete(:answers) }
-
-          it 'copies answers to patient_emr_update' do
-            subject
-            expect(category.patient_emr_update.answers.size).to eq(1)
-
-            answer = category.patient_emr_update.answers.first
-            expect(answer.task_assay_cd).to eq(freetext_detail_definition[:task_assay_cd])
-            expect(answer.free_text).to eq(answer.free_text)
-            expect(answer.prompt).to eq(freetext_detail_definition[:description])
-            expect(answer.field_type).to eq(freetext_detail_definition[:field_type])
-          end
-        end
-
-        context 'when params has answer params' do
-          let(:answer_params) { [] }
-
-          it 'does not copy answers to patient_emr_update' do
-            subject
-            expect(category.patient_emr_update.answers.size).to eq(0)
-          end
-        end
-      end
-
-      context 'when answer_params present' do
-        let(:params) do
-          {
-            status: status,
-            answers: [
-              { task_assay_cd: freetext_detail_definition[:task_assay_cd], free_text: new_free_text }
-            ]
-          }
-        end
-
-        it 'saves changes to patient_emr_update and keeps emr record as it was' do
-          subject
-          expect(category.answers).to eq([])
-          expect(category.patient_emr_update.comments).to eq(category.comments)
-
-          expect(category.patient_emr_update.answers.size).to eq(1)
-
-          answer = category.patient_emr_update.answers.first
-          expect(answer.task_assay_cd).to eq(freetext_detail_definition[:task_assay_cd])
-          expect(answer.free_text).to eq(new_free_text)
-          expect(answer.prompt).to eq(freetext_detail_definition[:description])
-          expect(answer.field_type).to eq(freetext_detail_definition[:field_type])
-        end
-      end
-
-      context 'when params are invalid' do
-        let(:long_string) { '1' * 3001 }
-        let(:params) do
-          {
-            status: status,
-            comments: long_string,
-            answers: [
-              { task_assay_cd: freetext_detail_definition[:task_assay_cd], free_text: '' },
-              { task_assay_cd: numeric_detail_definition[:task_assay_cd], value: '' },
-              { task_assay_cd: fuzzyage_detail_definition[:task_assay_cd], value: '' },
-              { task_assay_cd: alpha_detail_definition[:task_assay_cd], selected: [] },
-              { task_assay_cd: 'invalid' }
-            ]
-          }
-        end
-
-        it 'returns error' do
-          expect(subject).to be_failure
-          expect(subject.errors).to eq(['Not valid params'])
-          expect(category.patient_emr_update.errors[:comments]).to eq(['is too long (maximum is 2000 characters)'])
-          expect(category.patient_emr_update.errors[:'answers[0].free_text']).to eq(["can't be blank"])
-          expect(category.patient_emr_update.errors[:'answers[1].value']).to eq(["can't be blank"])
-          expect(category.patient_emr_update.errors[:'answers[2].value']).to eq(["can't be blank"])
-          expect(category.patient_emr_update.errors[:'answers[3].selected']).to(
-            eq ['must have at least one selected option if no free text is present']
-          )
-          expect(category.patient_emr_update.errors[:'answers[4].definition']).to(
-            eq ['could not be found for taskAssayCd=invalid']
-          )
-        end
+  def parse_relations(associations)
+    relations = {
+      belongs_to: [],
+      has_many: [],
+      has_one: [],
+      has_and_belongs_to_many: []
+    }
+    associations.each do |association|
+      case association.macro
+      when :belongs_to
+        relations[:belongs_to] << association.name
+      when :has_many
+        relations[:has_many] << association.name
+      when :has_one
+        relations[:has_one] << association.name
+      when :has_and_belongs_to_many
+        relations[:has_and_belongs_to_many] << association.name
+      else
+        raise "Unknown association type: #{association.macro}"
       end
     end
 
-    context 'when emr has updated before' do
-      let(:patient_emr_update) do
-        create(
-          :patient_emr_sh_category_update,
-          patient_emr_sh_category: category
-        )
-      end
+    return nil if relations.values.all?(&:empty?)
+    relations
+  end
 
-      it 'updates patient_emr_update record' do
-        expect { subject }.to(
-          change { patient_emr_update.reload.comments }.from(patient_emr_update.comments).to(new_comments)
-        )
-      end
+  def parse_serialized_attributes(the_class)
+    serialized_attributes = []
 
-      context 'when params has answer params' do
-        let(:answer_params) do
-          [
-            { task_assay_cd: freetext_detail_definition[:task_assay_cd], free_text: new_free_text },
-            { task_assay_cd: numeric_detail_definition[:task_assay_cd], value: '1' }
-          ]
-        end
-
-        it 'saves changes to patient_emr_update and keeps emr record as it was' do
-          expect { subject }.not_to(change { category.reload })
-
-          expect(category.patient_emr_update.comments).to eq(new_comments)
-          expect(category.patient_emr_update.answers.size).to eq(2)
-
-          answer = category.patient_emr_update.answers.FREETEXT.first
-          expect(answer.task_assay_cd).to eq(freetext_detail_definition[:task_assay_cd])
-          expect(answer.free_text).to eq(new_free_text)
-          expect(answer.prompt).to eq(freetext_detail_definition[:description])
-          expect(answer.field_type).to eq(freetext_detail_definition[:field_type])
-
-          answer = category.patient_emr_update.answers.NUMERIC.first
-          expect(answer.task_assay_cd).to eq(numeric_detail_definition[:task_assay_cd])
-          expect(answer.value).to eq('1')
-          expect(answer.prompt).to eq(numeric_detail_definition[:description])
-          expect(answer.field_type).to eq(numeric_detail_definition[:field_type])
-        end
-      end
-
-      context 'when params are invalid' do
-        let(:long_string) { '1' * 3001 }
-        let(:params) do
-          {
-            status: status,
-            comments: long_string,
-            answers: [
-              { task_assay_cd: freetext_detail_definition[:task_assay_cd], free_text: '' },
-              { task_assay_cd: numeric_detail_definition[:task_assay_cd], value: '' },
-              { task_assay_cd: fuzzyage_detail_definition[:task_assay_cd], value: '' },
-              { task_assay_cd: alpha_detail_definition[:task_assay_cd], selected: [] },
-              { task_assay_cd: 'invalid' }
-            ]
-          }
-        end
-
-        it 'returns error' do
-          expect(subject).to be_failure
-          expect(subject.errors).to eq(['Not valid params'])
-          expect(category.patient_emr_update.errors[:comments]).to eq(['is too long (maximum is 2000 characters)'])
-          expect(category.patient_emr_update.errors[:'answers[0].free_text']).to eq(["can't be blank"])
-          expect(category.patient_emr_update.errors[:'answers[1].value']).to eq(["can't be blank"])
-          expect(category.patient_emr_update.errors[:'answers[2].value']).to eq(["can't be blank"])
-          expect(category.patient_emr_update.errors[:'answers[3].selected']).to(
-            eq ['must have at least one selected option if no free text is present']
-          )
-          expect(category.patient_emr_update.errors[:'answers[4].definition']).to(
-            eq ['could not be found for taskAssayCd=invalid']
-          )
-        end
-      end
+    the_class.attribute_names.each do |attribute_name|
+      column = the_class.column_for_attribute(attribute_name)
+      serialized_attributes << attribute_name if column&.type == :text && column&.cast_type&.is_a?(ActiveRecord::Type::Serialized)
     end
+
+    serialized_attributes
+  end
+
+  def parse_db_indexes(the_class)
+    db_indexes = {}
+    the_class.connection.indexes(the_class.table_name).map { { _1.unique => _1.columns.first } }.each do |index|
+      key = index.keys.first
+      next db_indexes[key] << index[key] if db_indexes[key]
+      db_indexes[key] = [index[key]]
+    end
+    db_indexes
   end
 end

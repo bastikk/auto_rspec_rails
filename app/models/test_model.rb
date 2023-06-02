@@ -1,5 +1,5 @@
 # frozen_string_literal: true
-class TestModel < ApplicationRecord
+class TestModel < ActiveRecord::Base
   belongs_to :a
   belongs_to :b
 

@@ -1,0 +1,24 @@
+# frozen_string_literal: true
+
+require 'rails_helper'
+
+RSpec.describe <%= @class_name %>, type: :controller do
+<% if @application_controller_matchers[:callbacks].present? %>  describe 'callbacks' do
+  <%- if @application_controller_matchers[:callbacks][:before].present? -%>
+    <%- @application_controller_matchers[:callbacks][:before].each do |before_attribute| -%>
+    it { is_expected.to use_before_action(:<%= before_attribute %>) }
+    <%- end -%>
+  <%- end -%>
+  <%- if @application_controller_matchers[:callbacks][:after].present? -%>
+    <%- @application_controller_matchers[:callbacks][:after].each do |before_attribute| -%>
+    it { is_expected.to use_after_action(:<%= before_attribute %>) }
+    <%- end -%>
+  <%- end -%>
+  <%- if @application_controller_matchers[:callbacks][:around].present? -%>
+    <%- @application_controller_matchers[:callbacks][:around].each do |before_attribute| -%>
+    it { is_expected.to use_around_action(:<%= before_attribute %>) }
+    <%- end -%>
+  <% end -%>
+<% end -%>
+end
+end
