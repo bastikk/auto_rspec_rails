@@ -12,5 +12,4 @@ class TestModel < ActiveRecord::Base
   enum status2: { suspended: 'suspended', other: 'other' }
 
   self.implicit_order_column = :created_at
-  self.implicit_order_column = :updated_at
 end

@@ -1,4 +1,3 @@
-require 'pry'
 Dir[Rails.root.join('lib/generators/auto_rspec/parsers/*.rb')].each { |file| require file }
 
 class AutoRspecGenerator < Rails::Generators::NamedBase

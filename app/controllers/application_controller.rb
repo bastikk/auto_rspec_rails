@@ -3,6 +3,10 @@ class ApplicationController < ActionController::API
   after_action :test2
   around_action :test3
 
+  def index
+    redirect_to :show
+  end
+
   def show
     render json: { message: 'Hello World!' }
   end

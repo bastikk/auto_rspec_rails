@@ -3,12 +3,79 @@
 require 'rails_helper'
 
 RSpec.describe <%= @class_name %>, type: :model do
-<% if @active_model_matchers[:validators].present? %>  describe 'callbacks' do
-  <%- if @active_model_matchers[:validators][:presence].present? -%>
-    <%- @active_model_matchers[:validators][:presence].each do |validator_attribute| -%>
-    it { is_expected.to validate_presence_of(:<%= validator_attribute %>) }
+<% if @active_model_matchers[:validators].present? %> describe 'validators' do
+  <% if @active_model_matchers[:validators][:presence].present? %>
+    context 'presence' do
+    <%- @active_model_matchers[:validators][:presence].each do |attribute| -%>
+      it { is_expected.to validate_presence_of(:<%= attribute %>) }
     <%- end -%>
+    end
   <% end -%>
-<% end -%>
+  <% if @active_model_matchers[:validators][:absence].present? %>
+    context 'absence' do
+    <%- @active_model_matchers[:validators][:absence].each do |attribute| -%>
+      it { is_expected.to validate_absence_of(:<%= attribute %>) }
+    <%- end -%>
+    end
+  <% end -%>
+  <% if @active_model_matchers[:validators][:acceptance].present? %>
+    context 'acceptance' do
+    <%- @active_model_matchers[:validators][:acceptance].each do |attribute| -%>
+      it { is_expected.to validate_acceptance_of(:<%= attribute %>) }
+    <%- end -%>
+    end
+  <% end -%>
+  <% if @active_model_matchers[:validators][:confirmation].present? %>
+    context 'confirmation' do
+    <%- @active_model_matchers[:validators][:confirmation].each do |attribute| -%>
+      it { is_expected.to validate_confirmation_of(:<%= attribute %>) }
+    <%- end -%>
+    end
+  <% end -%>
+  <% if @active_model_matchers[:validators][:exclusion].present? %>
+    context 'exclusion' do
+    <%- @active_model_matchers[:validators][:exclusion].each do |attribute| -%>
+      it { is_expected.to validate_exclusion_of(:<%= attribute[:name] %>).in_array(<%= attribute[:options][:in] %>) }
+    <%- end -%>
+    end
+  <% end -%>
+  <% if @active_model_matchers[:validators][:inclusion].present? %>
+    context 'inclusion' do
+    <%- @active_model_matchers[:validators][:inclusion].each do |attribute| -%>
+      it { is_expected.to validate_inclusion_of(:<%= attribute[:name] %>).in_array(<%= attribute[:options][:in] %>) }
+    <%- end -%>
+    end
+  <% end -%>
+  <% if @active_model_matchers[:validators][:length].present? %>
+    context 'length' do
+    <%- @active_model_matchers[:validators][:length].each do |attribute| -%>
+      it do
+        is_expected.to validate_length_of(:<%= attribute[:name] %>)
+        <%- if attribute[:options][:minimum] -%>
+          .is_at_least(<%= attribute[:options][:minimum] %>)
+        <%- end -%>
+        <%- if attribute[:options][:minimum] -%>
+          .is_at_most(<%= attribute[:options][:maximum] %>)
+        <%- end -%>
+      <%- end -%>
+      end
+    end
+  <% end -%>
+  <% if @active_model_matchers[:validators][:numericality].present? %>
+    context 'numericality' do
+    <%- @active_model_matchers[:validators][:numericality].each do |attribute| -%>
+      it do
+        is_expected.to validate_numericality_of(:<%= attribute[:name] %>)
+        <%- if attribute[:options][:greater_than] -%>
+          .is_greater_than(<%= attribute[:options][:greater_than] %>)
+        <%- end -%>
+        <%- if attribute[:options][:less_than] -%>
+          .is_less_than(<%= attribute[:options][:less_than] %>)
+        <%- end -%>
+      <%- end -%>
+      end
+    end
+  <% end -%>
 end
+<% end -%>
 end
